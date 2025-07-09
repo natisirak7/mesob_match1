@@ -6,24 +6,49 @@ if($_SERVER["REQUEST_METHOD"]== "POST" && isset($_POST['submit']))
     $name=$_POST['username'];
     $email=$_POST['email'];
     $password=$_POST['password'];
-    $password=password_hash($password,PASSWORD_DEFAULT);
-    $sql = "INSERT INTO users (name, email, password) 
-            VALUES ('$name', '$email', '$password')";
-    $result=mysqli_query($conn,$sql);
-    if (!$result) {
-        $_SESSION['messageBox'] = true;
-        $_SESSION['messageType'] = 'error';
-        $_SESSION['messageTitle'] = 'Error';
-        $_SESSION['messageText'] = 'Registration failed: ' . mysqli_error($conn);
-        header("Location: login.php");
-        exit();
+
+    $password_errors = [];
+    if (strlen($password) < 8) {
+        $password_errors[] = "Password must be at least 8 characters long.";
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        $password_errors[] = "Password must contain at least one uppercase letter.";
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        $password_errors[] = "Password must contain at least one lowercase letter.";
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        $password_errors[] = "Password must contain at least one number.";
+    }
+    if (!preg_match('/[^a-zA-Z0-9]/', $password)) {
+        $password_errors[] = "Password must contain at least one special character.";
+    }
+
+    if (!empty($password_errors)) {
+        $messageBox = true;
+        $messageType = 'error';
+        $messageTitle = 'Weak Password';
+        $messageText = implode(' ', $password_errors);
     } else {
-        $_SESSION['messageBox'] = true;
-        $_SESSION['messageType'] = 'success';
-        $_SESSION['messageTitle'] = 'Registration Complete';
-        $_SESSION['messageText'] = 'Your account has been created. You can now log in.';
-        header("Location: login.php");
-        exit();
+        $password=password_hash($password,PASSWORD_DEFAULT);
+        $sql = "INSERT INTO users (name, email, password) 
+                VALUES ('$name', '$email', '$password')";
+        $result=mysqli_query($conn,$sql);
+        if (!$result) {
+            $_SESSION['messageBox'] = true;
+            $_SESSION['messageType'] = 'error';
+            $_SESSION['messageTitle'] = 'Error';
+            $_SESSION['messageText'] = 'Registration failed: ' . mysqli_error($conn);
+            header("Location: login.php");
+            exit();
+        } else {
+            $_SESSION['messageBox'] = true;
+            $_SESSION['messageType'] = 'success';
+            $_SESSION['messageTitle'] = 'Registration Complete';
+            $_SESSION['messageText'] = 'Your account has been created. You can now log in.';
+            header("Location: login.php");
+            exit();
+        }
     }
 }
 ?>
