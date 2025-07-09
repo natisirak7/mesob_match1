@@ -1,6 +1,15 @@
-import { findMatchingRecipes } from "./recipes.js";
+let allRecipes = [];
 
+// Fetch recipes from the backend API
+fetch("api/recipe.php")
+  .then((res) => res.json())
+  .then((data) => {
+    allRecipes = data;
+  });
+
+// Main app initialization
 document.addEventListener("DOMContentLoaded", () => {
+  // Selected ingredients management
   const selectedIngredients = new Set();
   const ingredientButtons = document.querySelectorAll(".ingredient-btn");
   const selectedIngredientsContainer = document.getElementById(
@@ -20,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
       selectedIngredientsContainer.appendChild(chip);
     });
 
+    // Update find recipes button state
     findRecipesBtn.disabled = selectedIngredients.size === 0;
   }
 
@@ -54,14 +64,17 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   function showView(viewName) {
+    // Update view visibility
     Object.entries(views).forEach(([name, element]) => {
       element.style.display = name === viewName ? "block" : "none";
     });
 
+    // Update navigation active states
     document.querySelectorAll(".nav-links a").forEach((link) => {
       link.classList.remove("active");
     });
 
+    // Set active class based on view
     if (viewName === "popularRecipes") {
       document.getElementById("popularRecipesLink").classList.add("active");
     } else if (
@@ -74,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Navigation
   document.getElementById("homeButton").addEventListener("click", (e) => {
     e.preventDefault();
     showView("ingredientSelector");
@@ -88,6 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .getElementById("popularRecipesLink")
     .addEventListener("click", (e) => {
       e.preventDefault();
+      renderPopularRecipes();
       showView("popularRecipes");
     });
 
@@ -116,13 +131,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Ingredient-based recipe matching
+  function findMatchingRecipes(selectedIngredients) {
+    const matches = [];
+    for (const recipe of allRecipes) {
+      if (!Array.isArray(recipe.requiredIngredients)) continue;
+      const matchedRequired = recipe.requiredIngredients.filter((ing) =>
+        selectedIngredients.includes(ing)
+      );
+      if (matchedRequired.length > 0) {
+        const missingRequired = recipe.requiredIngredients.filter(
+          (ing) => !selectedIngredients.includes(ing)
+        );
+        matches.push({
+          ...recipe,
+          matchCount: matchedRequired.length,
+          matchPercentage:
+            (matchedRequired.length / recipe.requiredIngredients.length) * 100,
+          missingIngredients: missingRequired,
+        });
+      }
+    }
+    return matches.sort((a, b) => b.matchCount - a.matchCount);
+  }
+
+  // Recipe finding functionality
   findRecipesBtn.addEventListener("click", () => {
     try {
       const matchedRecipes = findMatchingRecipes(
         Array.from(selectedIngredients)
       );
-
-      // Update the results view
       const recipeGrid = document.querySelector(".recipe-grid");
       recipeGrid.innerHTML = matchedRecipes
         .map(
@@ -136,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <p class="recipe-description">${recipe.description}</p>
                         <div class="missing-ingredients">
                             <span class="missing-label">Missing:</span>
-                            <span class="missing-item">${
+                            <span class="missing-item">$${
                               recipe.missingIngredients.length > 0
                                 ? recipe.missingIngredients.join(", ")
                                 : "None"
@@ -149,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )
         .join("");
 
+      // Show selected ingredients summary
       const summaryContainer = document.querySelector(
         ".selected-ingredients-summary"
       );
@@ -159,6 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )
         .join("");
 
+      // Add click handlers to recipe cards and view recipe buttons
       document.querySelectorAll(".recipe-grid .recipe-card").forEach((card) => {
         const viewButton = card.querySelector(".view-recipe-btn");
         if (viewButton) {
@@ -181,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Function to display recipe details
   function displayRecipeDetails(recipe) {
     const detailsView = document.getElementById("recipeDetails");
     const content = detailsView.querySelector(".recipe-content");
@@ -191,6 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
     content.querySelector(".recipe-image img").src = recipe.image;
     content.querySelector(".recipe-image img").alt = recipe.title;
 
+    // Update cooking info
     content.querySelector(
       ".cooking-time"
     ).textContent = `🕒 ${recipe.cookTime}`;
@@ -198,6 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ".servings"
     ).textContent = `👥 ${recipe.servings} servings`;
 
+    // Update instructions
     const instructionsList = content.querySelector(".instructions-list");
     instructionsList.innerHTML = recipe.instructions
       .map(
@@ -215,39 +258,39 @@ document.addEventListener("DOMContentLoaded", () => {
     showView("recipeDetails");
   }
 
-  const popularRecipesSection = document.getElementById("popularRecipes");
-  if (popularRecipesSection) {
-    const viewButtons =
-      popularRecipesSection.querySelectorAll(".view-recipe-btn");
-    viewButtons.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const recipeCard = e.target.closest(".recipe-card");
-        const recipeName = recipeCard.querySelector("h3").textContent;
+  // Render popular recipes dynamically
+  function renderPopularRecipes() {
+    // This function is now a no-op because popular recipes are static in index.php
+    // and should not include user-added recipes.
+    return;
+  }
 
-        const recipe = {
-          title: recipeName,
-          category: recipeCard.querySelector(".recipe-category").textContent,
-          description: recipeCard.querySelector(".recipe-description")
-            .textContent,
-          image: recipeCard.querySelector(".recipe-image img").src,
-          cookTime: "30-45 mins",
-          servings: 4,
-          instructions: [
-            "Heat oil in a large pot over medium heat",
-            "Add diced onions and cook until translucent",
-            "Add minced garlic and ginger, cook until fragrant",
-            "Add berbere spice blend (for spicy dishes) or turmeric (for mild dishes)",
-            "Add your main ingredients and stir well",
-            "Add water or stock, bring to a simmer",
-            "Cook until all ingredients are tender and flavors have melded",
-            "Adjust seasoning to taste",
-            "Serve hot with injera bread",
-          ],
-        };
+  // Message box close functionality
+  const closeMessageBtn = document.querySelector(".close-message");
+  const messageBox = document.getElementById("messageBox");
+  if (closeMessageBtn && messageBox) {
+    closeMessageBtn.addEventListener("click", () => {
+      messageBox.style.display = "none";
+    });
+  }
 
-        displayRecipeDetails(recipe);
-      });
+  // User initial dropdown logic
+  const userInitialBtn = document.getElementById("userInitialBtn");
+  const userDropdown = document.getElementById("userDropdown");
+  if (userInitialBtn && userDropdown) {
+    userInitialBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (
+        userDropdown.style.display === "none" ||
+        userDropdown.style.display === ""
+      ) {
+        userDropdown.style.display = "block";
+      } else {
+        userDropdown.style.display = "none";
+      }
+    });
+    document.addEventListener("click", function () {
+      userDropdown.style.display = "none";
     });
   }
 });
